@@ -19,7 +19,7 @@ def show_login():
           header, #MainMenu, footer {visibility: hidden;}
           [data-testid="stSidebar"] { display: none !important; }
 
-          /* Contenedor pantalla completa centrado */
+          /* Página centrada */
           .login-page {
               position: fixed;
               inset: 0;
@@ -36,10 +36,24 @@ def show_login():
               border: 1px solid rgba(0,0,0,0.08);
               border-radius: 14px;
               box-shadow: 0 10px 30px rgba(0,0,0,0.06);
-              padding: 18px 16px 16px;
+              padding: 0 16px 16px;    /* 👈 sin padding arriba */
+              background: #fff;
           }
+
+          /* ====== FIX del “rectángulo blanco” arriba del título ====== */
+          /* Quitar márgenes/paddings que Streamlit inyecta en el primer bloque */
+          .login-card .stMarkdown { margin: 0 !important; padding: 0 !important; }
+          .login-card .stMarkdown p { margin: 0 !important; padding: 0 !important; }
+
+          /* Asegurar que el primer bloque (el título) no tenga separación superior */
+          .login-card [data-testid="stVerticalBlock"] > div:first-child {
+              margin-top: 0 !important; padding-top: 0 !important;
+          }
+
+          /* Título y subtítulo */
           .login-title {
-              margin: 0 0 12px 0;
+              margin: 0 0 12px 0 !important;   /* 👈 sin margen arriba */
+              padding-top: 0 !important;
               font-size: 18px;
               font-weight: 700;
               text-align: center;
@@ -50,36 +64,42 @@ def show_login():
               opacity: .65;
               text-align: center;
           }
+
+          /* Form sin espacio extra arriba */
+          .login-card form, .login-card [data-testid="stForm"] {
+              margin-top: 0 !important;
+              padding-top: 0 !important;
+          }
+
           .login-btn > button { width: 100% !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="login-page">', unsafe_allow_html=True)
-    with st.container():
-        st.markdown('<div class="login-card">', unsafe_allow_html=True)
+    # Estructura visual del login
+    st.markdown('<div class="login-page"><div class="login-card">', unsafe_allow_html=True)
 
-        st.markdown('<div class="login-title">Ingresá para ver el tablero</div>', unsafe_allow_html=True)
-        st.markdown('<div class="login-sub">Usuario y contraseña</div>', unsafe_allow_html=True)
+    # Título + subtítulo (markdown sin márgenes por CSS)
+    st.markdown('<div class="login-title">Ingresá para ver el tablero</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-sub">Usuario y contraseña</div>', unsafe_allow_html=True)
 
-        # Form de login
-        with st.form("login_form", clear_on_submit=False):
-            user = st.text_input("Usuario", key="login_user")
-            pwd  = st.text_input("Contraseña", type="password", key="login_pass")
-            submitted = st.form_submit_button("Ingresar")
+    # Form de login
+    with st.form("login_form", clear_on_submit=False):
+        user = st.text_input("Usuario", key="login_user")
+        pwd  = st.text_input("Contraseña", type="password", key="login_pass")
+        submitted = st.form_submit_button("Ingresar", use_container_width=True)
 
-        # Carga de credenciales: primero secrets, sino fallback
-        auth_cfg = st.secrets.get("auth", {"users": {"admin": "1234"}})
-        users = auth_cfg.get("users", {})
+    # Carga de credenciales: primero secrets, sino fallback
+    auth_cfg = st.secrets.get("auth", {"users": {"admin": "1234"}})
+    users = auth_cfg.get("users", {})
 
-        if submitted:
-            if user in users and str(pwd) == str(users[user]):
-                st.session_state.authenticated = True
-                st.success("Ingreso correcto.")
-            else:
-                st.error("Usuario o contraseña incorrectos.")
+    if submitted:
+        if user in users and str(pwd) == str(users[user]):
+            st.session_state.authenticated = True
+            st.success("Ingreso correcto.")
+        else:
+            st.error("Usuario o contraseña incorrectos.")
 
-        st.markdown('</div>', unsafe_allow_html=True)  # /login-card
-    st.markdown('</div>', unsafe_allow_html=True)      # /login-page
+    st.markdown('</div></div>', unsafe_allow_html=True)  # /login-card + /login-page
 
 # ================== APP PRINCIPAL ==================
 def main_app():
@@ -205,7 +225,7 @@ def main_app():
         if s1.isna().mean() > 0.5:
             s2 = (
                 s.astype(str)
-                 .str.replace(r"\.", "", regex=True)
+                 .str.replace(r"\\.", "", regex=True)
                  .str.replace(",", ".", regex=False)
             )
             s1 = pd.to_numeric(s2, errors="coerce")
