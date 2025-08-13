@@ -7,7 +7,7 @@ import base64
 # ================== CONFIG ==================
 st.set_page_config(page_title="Aging - Filtros", layout="wide")
 
-# ================== LOGIN (pantalla previa, solo recuadro) ==================
+# ================== LOGIN (pantalla previa, SOLO recuadro) ==================
 def get_users_from_secrets():
     try:
         return dict(st.secrets.get("users", {}))  # [users] user="pass" en .streamlit/secrets.toml
@@ -22,23 +22,27 @@ if "whoami" not in st.session_state:
     st.session_state["whoami"] = ""
 
 def render_login():
-    # CSS: ocultar header/menú/footer y centrar el recuadro
+    # CSS: oculta TODO (header/toolbar/menú), quita padding y centra el recuadro
     st.markdown("""
         <style>
-            header {visibility: hidden;}
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            .block-container { padding-top: 0 !important; padding-bottom: 0 !important; }
+            header, footer, #MainMenu, div[role="banner"], div[data-testid="stToolbar"] {
+                display: none !important;
+            }
+            .block-container {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            body, .block-container { background: #f0f2f6; }
             .login-wrap{
                 display:flex; flex-direction:column; align-items:center; justify-content:center;
-                min-height:100vh;
+                height:100vh; width:100%;
             }
             .login-card{
                 width: 380px; border: 1px solid rgba(0,0,0,0.08);
                 border-radius: 12px; padding: 18px 18px 14px;
                 box-shadow: 0 4px 16px rgba(0,0,0,0.06); background: #fff;
             }
-            .login-title{ font-size: 1.1rem; font-weight: 700; margin: 0 0 10px 0; text-align:center;}
+            .login-title{ font-size: 1.1rem; font-weight: 700; margin: 0 0 10px 0; text-align:center; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -65,14 +69,15 @@ if not st.session_state["logged_in"]:
     if not st.session_state["logged_in"]:
         st.stop()
 
-# ================== ESTILOS DEL TABLERO (se cargan solo si hay login) ==================
+# ================== ESTILOS DEL TABLERO (se cargan sólo si hay login) ==================
 st.markdown(
     """
     <style>
       header {visibility: hidden;}
       #MainMenu {visibility: hidden;}
       footer {visibility: hidden;}
-      .block-container { padding-top: 0.5rem; }
+      /* Restauramos padding para el tablero (el login lo había puesto en 0) */
+      .block-container { padding: 0.5rem 1rem 0 1rem !important; }
 
       /* Tarjetas métricas (compactas) */
       .metric-card {
