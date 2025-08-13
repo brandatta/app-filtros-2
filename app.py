@@ -4,17 +4,17 @@ from pathlib import Path
 from streamlit_echarts import st_echarts
 import base64
 
-# ================== CONFIG ==================
+# ================== CONFIG BÁSICA ==================
 st.set_page_config(page_title="Aging - Filtros", layout="wide")
 
-# ================== LOGIN (pantalla previa, SOLO recuadro) ==================
+# ================== LOGIN: pantalla previa, SOLO recuadro ==================
 def get_users_from_secrets():
     try:
         return dict(st.secrets.get("users", {}))  # [users] user="pass" en .streamlit/secrets.toml
     except Exception:
         return {}
 
-USERS = get_users_from_secrets() or {"admin": "changeme"}  # fallback para dev
+USERS = get_users_from_secrets() or {"admin": "changeme"}  # fallback dev
 
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
@@ -22,27 +22,32 @@ if "whoami" not in st.session_state:
     st.session_state["whoami"] = ""
 
 def render_login():
-    # CSS: oculta TODO (header/toolbar/menú), quita padding y centra el recuadro
+    # Ocultar completamente header/toolbar/menú y quitar paddings/márgenes
     st.markdown("""
         <style>
             header, footer, #MainMenu, div[role="banner"], div[data-testid="stToolbar"] {
                 display: none !important;
             }
-            .block-container {
+            html, body, .block-container {
                 padding: 0 !important;
                 margin: 0 !important;
+                background: #f0f2f6 !important;
             }
-            body, .block-container { background: #f0f2f6; }
             .login-wrap{
                 display:flex; flex-direction:column; align-items:center; justify-content:center;
                 height:100vh; width:100%;
             }
             .login-card{
-                width: 380px; border: 1px solid rgba(0,0,0,0.08);
-                border-radius: 12px; padding: 18px 18px 14px;
-                box-shadow: 0 4px 16px rgba(0,0,0,0.06); background: #fff;
+                width: 360px; background:#fff;
+                border:1px solid rgba(0,0,0,0.08); border-radius:12px;
+                padding: 22px 22px 16px; box-shadow:0 4px 16px rgba(0,0,0,0.06);
             }
-            .login-title{ font-size: 1.1rem; font-weight: 700; margin: 0 0 10px 0; text-align:center; }
+            .login-title{
+                font-size: 1.05rem; font-weight: 700; margin: 0 0 12px 0; text-align:center;
+            }
+            /* Oculta cualquier espacio fantasma arriba/abajo */
+            [data-testid="stAppViewBlockContainer"] { padding: 0 !important; }
+            [data-testid="stVerticalBlock"] > div:first-child { padding-top: 0 !important; margin-top: 0 !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -50,8 +55,8 @@ def render_login():
     st.markdown('<div class="login-title">Ingresá para ver el tablero</div>', unsafe_allow_html=True)
 
     with st.form("login_form", clear_on_submit=False):
-        user = st.text_input("Usuario")
-        pwd = st.text_input("Contraseña", type="password")
+        user = st.text_input("Usuario", label_visibility="collapsed", placeholder="Usuario")
+        pwd  = st.text_input("Contraseña", type="password", label_visibility="collapsed", placeholder="Contraseña")
         submit = st.form_submit_button("Ingresar", use_container_width=True)
         if submit:
             if user in USERS and pwd == USERS[user]:
@@ -76,8 +81,7 @@ st.markdown(
       header {visibility: hidden;}
       #MainMenu {visibility: hidden;}
       footer {visibility: hidden;}
-      /* Restauramos padding para el tablero (el login lo había puesto en 0) */
-      .block-container { padding: 0.5rem 1rem 0 1rem !important; }
+      .block-container { padding: 0.5rem 1rem 0 1rem !important; background: white !important; }
 
       /* Tarjetas métricas (compactas) */
       .metric-card {
@@ -110,7 +114,7 @@ st.markdown(
       .table-compact th:last-child, .table-compact td:last-child { 
           width: 32%; 
           text-align: right; 
-          white-space: nowrap; /* una sola línea para los montos */
+          white-space: nowrap;
       }
       .table-compact td { word-break: break-word; white-space: normal; }
 
@@ -120,11 +124,9 @@ st.markdown(
           grid-template-columns: repeat(3, 1fr);
           gap: 5px;
           width: 100%;
-          margin-right: -14px; /* come el padding derecho del contenedor para que Cliente no deje hueco */
+          margin-right: -14px;
       }
-      div[data-testid="column"]:has(.three-cards) {
-          padding-right: 0 !important;
-      }
+      div[data-testid="column"]:has(.three-cards) { padding-right: 0 !important; }
       .three-cards > .card {
           border: 1px solid rgba(0,0,0,0.05);
           border-radius: 8px;
@@ -140,19 +142,22 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ================== LOGO Y TÍTULO ==================
+# ================== LOGO Y TÍTULO (solo tablero) ==================
 def get_base64_image(image_path):
     with open(image_path, "rb") as img_file:
-        return base64.b64encode(img_file.read()).decode()
+        import base64 as _b64
+        return _b64.b64encode(img_file.read()).decode()
 
-logo_base64 = get_base64_image("logorelleno (1).png")
+try:
+    logo_base64 = get_base64_image("logorelleno (1).png")
+except Exception:
+    logo_base64 = ""
 
 st.markdown(
     f"""
     <div style="display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 0.75rem;">
         <h1 style="font-size:1.5rem; margin:0;">Draft Biosidus Aging</h1>
-        <img src="data:image/png;base64,{logo_base64}" alt="Logo"
-             style="height:50px; position: absolute; right: -25px; top: 13px;">
+        {'<img src="data:image/png;base64,' + logo_base64 + '" alt="Logo" style="height:50px; position: absolute; right: -25px; top: 13px;">' if logo_base64 else ''}
     </div>
     """,
     unsafe_allow_html=True
@@ -164,7 +169,7 @@ with st.sidebar:
     if st.button("Cerrar sesión", use_container_width=True):
         st.session_state["logged_in"] = False
         st.session_state["whoami"] = ""
-        st.experimental_set_query_params()  # limpia posibles params
+        st.experimental_set_query_params()
         st.success("Sesión cerrada. Actualizá la página para volver a ingresar.")
         st.stop()
 
