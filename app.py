@@ -385,9 +385,3 @@ st.dataframe(
     df_filtered.drop(columns=drop_aux, errors="ignore"),
     use_container_width=True, hide_index=True
 )
-========== TABLA DETALLE ==================
-drop_aux = [f"_{col}_NUM" for col in metric_cols]
-st.dataframe(
-    df_filtered.drop(columns=drop_aux, errors="ignore"),
-    use_container_width=True, hide_index=True
-)
