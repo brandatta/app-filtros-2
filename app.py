@@ -95,7 +95,7 @@ def show_login():
     if submitted:
         if user in users and str(pwd) == str(users[user]):
             st.session_state.authenticated = True
-            st.success("Ingreso correcto.")
+            st.success("Token generado. Haga click nuevamente en Ingresar")
         else:
             st.error("Usuario o contraseña incorrectos.")
 
