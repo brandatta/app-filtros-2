@@ -7,18 +7,14 @@ import base64
 # ================== CONFIG ==================
 st.set_page_config(page_title="Aging - Filtros", layout="wide")
 
-# ---------- LOGIN ----------
+# ================== LOGIN (pantalla previa, solo recuadro) ==================
 def get_users_from_secrets():
     try:
-        # Espera estructura: [users] user="pass" en secrets.toml
-        return dict(st.secrets.get("users", {}))
+        return dict(st.secrets.get("users", {}))  # [users] user="pass" en .streamlit/secrets.toml
     except Exception:
         return {}
 
-USERS = get_users_from_secrets()
-if not USERS:
-    # Fallback para desarrollo: ¡cambialo en producción!
-    USERS = {"admin": "changeme"}
+USERS = get_users_from_secrets() or {"admin": "changeme"}  # fallback para dev
 
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
@@ -26,34 +22,33 @@ if "whoami" not in st.session_state:
     st.session_state["whoami"] = ""
 
 def render_login():
-    st.markdown(
-        """
+    # CSS: ocultar header/menú/footer y centrar el recuadro
+    st.markdown("""
         <style>
-          .login-wrap{
-              display:flex; align-items:center; justify-content:center; min-height:60vh;
-          }
-          .login-card{
-              width: 380px; border: 1px solid rgba(0,0,0,0.08);
-              border-radius: 12px; padding: 18px 18px 14px;
-              box-shadow: 0 4px 16px rgba(0,0,0,0.06); background: #fff;
-          }
-          .login-title{ font-size: 1.1rem; font-weight: 700; margin: 0 0 10px 0; text-align:center;}
+            header {visibility: hidden;}
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            .block-container { padding-top: 0 !important; padding-bottom: 0 !important; }
+            .login-wrap{
+                display:flex; flex-direction:column; align-items:center; justify-content:center;
+                min-height:100vh;
+            }
+            .login-card{
+                width: 380px; border: 1px solid rgba(0,0,0,0.08);
+                border-radius: 12px; padding: 18px 18px 14px;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.06); background: #fff;
+            }
+            .login-title{ font-size: 1.1rem; font-weight: 700; margin: 0 0 10px 0; text-align:center;}
         </style>
-        """,
-        unsafe_allow_html=True
-    )
+    """, unsafe_allow_html=True)
+
     st.markdown('<div class="login-wrap"><div class="login-card">', unsafe_allow_html=True)
     st.markdown('<div class="login-title">Ingresá para ver el tablero</div>', unsafe_allow_html=True)
 
-    with st.form("login_form"):
+    with st.form("login_form", clear_on_submit=False):
         user = st.text_input("Usuario")
         pwd = st.text_input("Contraseña", type="password")
-        col_a, col_b = st.columns([1,1])
-        with col_a:
-            submit = st.form_submit_button("Ingresar")
-        with col_b:
-            st.form_submit_button("Cancelar")  # sólo estética
-
+        submit = st.form_submit_button("Ingresar", use_container_width=True)
         if submit:
             if user in USERS and pwd == USERS[user]:
                 st.session_state["logged_in"] = True
@@ -61,16 +56,16 @@ def render_login():
                 st.success("Autenticado correctamente.")
             else:
                 st.error("Usuario o contraseña inválidos.")
+
     st.markdown('</div></div>', unsafe_allow_html=True)
 
-# Mostrar login si no está autenticado (sin usar st.rerun)
+# Mostrar login si no está autenticado (sin st.rerun)
 if not st.session_state["logged_in"]:
     render_login()
-    # Si después del submit quedó autenticado, seguimos; si no, frenamos.
     if not st.session_state["logged_in"]:
         st.stop()
 
-# ================== ESTILOS APP ==================
+# ================== ESTILOS DEL TABLERO (se cargan solo si hay login) ==================
 st.markdown(
     """
     <style>
@@ -120,13 +115,11 @@ st.markdown(
           grid-template-columns: repeat(3, 1fr);
           gap: 5px;
           width: 100%;
-          margin-right: -14px; /* come padding derecho para que Cliente no deje hueco */
-        }
-
+          margin-right: -14px; /* come el padding derecho del contenedor para que Cliente no deje hueco */
+      }
       div[data-testid="column"]:has(.three-cards) {
           padding-right: 0 !important;
       }
-
       .three-cards > .card {
           border: 1px solid rgba(0,0,0,0.05);
           border-radius: 8px;
@@ -277,6 +270,7 @@ pie_data = [{"name": label_map.get(k, k), "value": float(v)} for k, v in col_sum
 echarts_colors = ["#5470C6", "#91CC75", "#FAC858", "#EE6666", "#73C0DE",
                   "#3BA272", "#FC8452", "#9A60B4", "#EA7CCC"]
 
+# Columnas: pie chart y tablas
 col_chart, col_tables = st.columns([2.3, 2.7])
 
 with col_chart:
