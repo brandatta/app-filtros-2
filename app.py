@@ -268,8 +268,9 @@ def main_app():
     side_sel, side_clear = render_filters(st.sidebar, "side")
 
     # Fallback arriba para móvil (si no ves sidebar)
-    with st.expander("Filtros (si no ves la pestaña lateral, usá este)"):
-        mob_sel, mob_clear = render_filters(st, "mob")
+    exp = st.expander("Filtros (si no ves la pestaña lateral, usá este)")
+    mob_sel, mob_clear = render_filters(exp, "mob")  # 👉 le pasamos el expander (sí es un container)
+
 
     def any_selected(sels: dict) -> bool:
         return any(v != "Todos" for v in sels.values())
