@@ -268,7 +268,7 @@ def main_app():
     side_sel, side_clear = render_filters(st.sidebar, "side")
 
     # Fallback arriba para móvil (si no ves sidebar)
-    exp = st.expander("Filtros (si no ves la pestaña lateral, usá este)")
+    exp = st.expander("Filtros")
     mob_sel, mob_clear = render_filters(exp, "mob")  # 👉 le pasamos el expander (sí es un container)
 
 
