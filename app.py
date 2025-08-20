@@ -5,64 +5,20 @@ from streamlit_echarts import st_echarts
 import base64
 
 # ================== CONFIG GLOBAL ==================
-st.set_page_config(
-    page_title="Aging - Filtros",
-    layout="centered",                 # más estable en móvil; si preferís, cambiá a "wide"
-    initial_sidebar_state="collapsed"  # colapsar sidebar en móvil
-)
+st.set_page_config(page_title="Aging - Filtros", layout="wide")
 
 # Estado de autenticación
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# ================== CSS BASE (anti-cortes en móvil/WebView) ==================
-def inject_base_css(hide_chrome: bool = False):
-    st.markdown(f"""
-    <style>
-      html, body, [data-testid="stAppViewContainer"] {{
-        overflow-x: hidden !important;
-      }}
-
-      .block-container {{
-        padding-top: 0.6rem;
-        padding-left: 0.75rem;
-        padding-right: 0.75rem;
-        max-width: 980px; /* si usás layout="wide", este tope evita desbordes */
-      }}
-
-      /* Ocultar sidebar por default (igual la colapsamos en set_page_config) */
-      [data-testid="stSidebar"], section[data-testid="stSidebar"] {{
-        display: none !important;
-      }}
-
-      /* Inputs y botones cómodos en pantallas chicas */
-      @media (max-width: 480px){{
-        .block-container {{ padding-left: 0.6rem; padding-right: 0.6rem; }}
-        .stButton > button,
-        .stTextInput input, .stSelectbox [role="combobox"],
-        .stDateInput input, .stNumberInput input {{
-          height: 44px !important;
-          font-size: 16px !important; /* evita zoom del teclado */
-        }}
-        /* Forzar que todo apile correctamente */
-        [data-testid="column"] {{ min-width: 0 !important; }}
-      }}
-
-      /* Evitar overflow horizontal en iframes o charts */
-      iframe, .stPlotlyChart, .stECharts {{ max-width: 100% !important; }}
-
-      /* Ocultar chrome (header/menu/footer) si se solicita (p.ej. login) */
-      {"header, #MainMenu, footer {visibility: hidden;}" if hide_chrome else ""}
-    </style>
-    """, unsafe_allow_html=True)
-
 # ================== LOGIN ==================
 def show_login():
-    inject_base_css(hide_chrome=True)
-
-    # Estilos del login
+    # Oculta header, menú, footer y sidebar SOLO en login
     st.markdown("""
         <style>
+          header, #MainMenu, footer {visibility: hidden;}
+          [data-testid="stSidebar"] { display: none !important; }
+
           /* Página centrada */
           .login-page {
               position: fixed;
@@ -70,7 +26,7 @@ def show_login():
               display: flex;
               align-items: center;
               justify-content: center;
-              background: #ffffff;
+              background: #ffffff; /* fondo liso */
               padding: 0 16px;
           }
           /* Tarjeta del login */
@@ -80,18 +36,23 @@ def show_login():
               border: 1px solid rgba(0,0,0,0.08);
               border-radius: 14px;
               box-shadow: 0 10px 30px rgba(0,0,0,0.06);
-              padding: 0 16px 16px;
+              padding: 0 16px 16px;    /* 👈 sin padding arriba */
               background: #fff;
           }
-          /* Quitar márgenes/paddings del primer bloque para evitar “rectángulo” arriba */
+
+          /* ====== FIX del “rectángulo blanco” arriba del título ====== */
+          /* Quitar márgenes/paddings que Streamlit inyecta en el primer bloque */
           .login-card .stMarkdown { margin: 0 !important; padding: 0 !important; }
           .login-card .stMarkdown p { margin: 0 !important; padding: 0 !important; }
+
+          /* Asegurar que el primer bloque (el título) no tenga separación superior */
           .login-card [data-testid="stVerticalBlock"] > div:first-child {
               margin-top: 0 !important; padding-top: 0 !important;
           }
-          /* Título/subtítulo */
+
+          /* Título y subtítulo */
           .login-title {
-              margin: 0 0 12px 0 !important;
+              margin: 0 0 12px 0 !important;   /* 👈 sin margen arriba */
               padding-top: 0 !important;
               font-size: 18px;
               font-weight: 700;
@@ -103,11 +64,13 @@ def show_login():
               opacity: .65;
               text-align: center;
           }
+
           /* Form sin espacio extra arriba */
           .login-card form, .login-card [data-testid="stForm"] {
               margin-top: 0 !important;
               padding-top: 0 !important;
           }
+
           .login-btn > button { width: 100% !important; }
         </style>
     """, unsafe_allow_html=True)
@@ -140,12 +103,13 @@ def show_login():
 
 # ================== APP PRINCIPAL ==================
 def main_app():
-    inject_base_css(hide_chrome=True)
-
-    # Estilos específicos del tablero
+    # Ocultar cabecera/menú/footer + estilos globales del tablero
     st.markdown(
         """
         <style>
+          header {visibility: hidden;}
+          #MainMenu {visibility: hidden;}
+          footer {visibility: hidden;}
           .block-container { padding-top: 0.5rem; }
 
           /* Tarjetas métricas (compactas) */
@@ -164,37 +128,46 @@ def main_app():
 
           /* Mini tablas */
           .mini-title { font-weight: 600; margin: 0 0 6px 2px; }
-          .table-box { height: 320px; overflow-y: auto; overflow-x: hidden; flex: 1; }
+          .table-box { 
+              height: 320px; 
+              overflow-y: auto; 
+              overflow-x: hidden; 
+              flex: 1;
+          }
           .table-compact { width: 100%; table-layout: fixed; border-collapse: collapse; }
           .table-compact th, .table-compact td {
               padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 12px; vertical-align: top;
           }
           .table-compact th { position: sticky; top: 0; background: #fafafa; z-index: 1; }
           .table-compact th:first-child, .table-compact td:first-child { width: 68%; }
-          .table-compact th:last-child, .table-compact td:last-child { width: 32%; text-align: right; white-space: nowrap; }
+          .table-compact th:last-child, .table-compact td:last-child { 
+              width: 32%; 
+              text-align: right; 
+              white-space: nowrap;
+          }
           .table-compact td { word-break: break-word; white-space: normal; }
 
           /* Tres rectángulos iguales con GRID */
           .three-cards {
               display: grid;
               grid-template-columns: repeat(3, 1fr);
-              gap: 6px;
+              gap: 5px;
               width: 100%;
               margin-right: -14px;
+            }
+          div[data-testid="column"]:has(.three-cards) {
+              padding-right: 0 !important;
           }
           .three-cards > .card {
               border: 1px solid rgba(0,0,0,0.05);
               border-radius: 8px;
-              padding: 6px;
+              padding: 4px;
               box-shadow: 0 1px 4px rgba(0,0,0,0.04);
               display: flex;
               flex-direction: column;
               min-width: 0;
               height: 350px;
           }
-          /* Responsive: que apile 1-2-3 según ancho */
-          @media (max-width: 960px){ .three-cards { grid-template-columns: repeat(2, 1fr); } }
-          @media (max-width: 520px){ .three-cards { grid-template-columns: 1fr; } }
         </style>
         """,
         unsafe_allow_html=True
@@ -202,23 +175,17 @@ def main_app():
 
     # ================== LOGO Y TÍTULO ==================
     def get_base64_image(image_path):
-        try:
-            with open(image_path, "rb") as img_file:
-                return base64.b64encode(img_file.read()).decode()
-        except Exception:
-            return None
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
 
     logo_base64 = get_base64_image("logorelleno (1).png")
-    logo_html = (
-        f'<img src="data:image/png;base64,{logo_base64}" alt="Logo" style="height:50px; position: absolute; right: -25px; top: 13px;">'
-        if logo_base64 else ""
-    )
 
     st.markdown(
         f"""
         <div style="display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 0.75rem;">
             <h1 style="font-size:1.5rem; margin:0;">Draft Biosidus Aging</h1>
-            {logo_html}
+            <img src="data:image/png;base64,{logo_base64}" alt="Logo"
+                 style="height:50px; position: absolute; right: -25px; top: 13px;">
         </div>
         """,
         unsafe_allow_html=True
@@ -234,9 +201,9 @@ def main_app():
 
     @st.cache_data(show_spinner=False)
     def load_excel(path_or_buffer):
-        df_ = pd.read_excel(path_or_buffer)
-        df_.columns = [str(c).strip() for c in df_.columns]
-        return df_
+        df = pd.read_excel(path_or_buffer)
+        df.columns = [str(c).strip() for c in df.columns]
+        return df
 
     default_path = Path("AGING AL 2025-01-28.xlsx")
     if not default_path.exists():
@@ -258,7 +225,7 @@ def main_app():
         if s1.isna().mean() > 0.5:
             s2 = (
                 s.astype(str)
-                 .str.replace(r"\.", "", regex=True)
+                 .str.replace(r"\\.", "", regex=True)
                  .str.replace(",", ".", regex=False)
             )
             s1 = pd.to_numeric(s2, errors="coerce")
@@ -302,7 +269,7 @@ def main_app():
 
     cards_html = ""
     for col in metric_cols:
-        val = float(df_for_metrics[f"_{col}_NUM"].sum())
+        val = df_for_metrics[f"_{col}_NUM"].sum()
         cards_html += f"""
         <div class="metric-card">
             <div class="metric-label">{col}</div>
@@ -353,7 +320,7 @@ def main_app():
         }
         click_ret = st_echarts(
             options=pie_options,
-            height="340px",  # un poco más chico, rinde mejor en móvil
+            height="360px",
             key=f"pie_{filters_version}",
             events={"click": "function(p){ return {name: p.name, value: p.value}; }"}
         )
