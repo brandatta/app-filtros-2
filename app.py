@@ -5,7 +5,7 @@ from streamlit_echarts import st_echarts
 import base64
 
 # ================== CONFIG GLOBAL ==================
-st.set_page_config(page_title="Aging - Filtros", layout="wide")
+st.set_page_config(page_title="Aging - Filtros", layout="wide", initial_sidebar_state="expanded")
 
 # Estado de autenticación
 if "authenticated" not in st.session_state:
@@ -41,11 +41,8 @@ def show_login():
           }
 
           /* ====== FIX del “rectángulo blanco” arriba del título ====== */
-          /* Quitar márgenes/paddings que Streamlit inyecta en el primer bloque */
           .login-card .stMarkdown { margin: 0 !important; padding: 0 !important; }
           .login-card .stMarkdown p { margin: 0 !important; padding: 0 !important; }
-
-          /* Asegurar que el primer bloque (el título) no tenga separación superior */
           .login-card [data-testid="stVerticalBlock"] > div:first-child {
               margin-top: 0 !important; padding-top: 0 !important;
           }
@@ -110,6 +107,10 @@ def main_app():
           header {visibility: hidden;}
           #MainMenu {visibility: hidden;}
           footer {visibility: hidden;}
+
+          /* Evitar cortes horizontales */
+          html, body, [data-testid="stAppViewContainer"] { overflow-x: auto !important; }
+
           .block-container { padding-top: 0.5rem; }
 
           /* Tarjetas métricas (compactas) */
@@ -131,7 +132,7 @@ def main_app():
           .table-box { 
               height: 320px; 
               overflow-y: auto; 
-              overflow-x: hidden; 
+              overflow-x: auto;   /* 👈 antes estaba hidden */
               flex: 1;
           }
           .table-compact { width: 100%; table-layout: fixed; border-collapse: collapse; }
@@ -151,23 +152,24 @@ def main_app():
           .three-cards {
               display: grid;
               grid-template-columns: repeat(3, 1fr);
-              gap: 5px;
+              gap: 6px;
               width: 100%;
-              margin-right: -14px;
-            }
-          div[data-testid="column"]:has(.three-cards) {
-              padding-right: 0 !important;
+              /* margin-right: -14px;  <-- eliminado */
           }
           .three-cards > .card {
               border: 1px solid rgba(0,0,0,0.05);
               border-radius: 8px;
-              padding: 4px;
+              padding: 6px;
               box-shadow: 0 1px 4px rgba(0,0,0,0.04);
               display: flex;
               flex-direction: column;
               min-width: 0;
               height: 350px;
           }
+
+          /* Responsive: 3 -> 2 -> 1 columnas */
+          @media (max-width: 960px){ .three-cards { grid-template-columns: repeat(2, 1fr); } }
+          @media (max-width: 520px){ .three-cards { grid-template-columns: 1fr; } }
         </style>
         """,
         unsafe_allow_html=True
@@ -225,7 +227,7 @@ def main_app():
         if s1.isna().mean() > 0.5:
             s2 = (
                 s.astype(str)
-                 .str.replace(r"\\.", "", regex=True)
+                 .str.replace(r"\.", "", regex=True)   # <-- fix: antes era "\\."
                  .str.replace(",", ".", regex=False)
             )
             s1 = pd.to_numeric(s2, errors="coerce")
@@ -239,27 +241,53 @@ def main_app():
         st.session_state["filters_version"] = 0
     filters_version = st.session_state["filters_version"]
 
-    with st.sidebar:
-        st.markdown("**Filtros**")
+    def render_filters(container, key_prefix):
+        with container:
+            st.markdown("**Filtros**")
+            def dropdown(label, colname):
+                vals = pd.Series(df[colname].dropna().unique())
+                try:
+                    vals = vals.sort_values()
+                except Exception:
+                    pass
+                options = ["Todos"] + vals.astype(str).tolist()
+                key = f"{key_prefix}_{colname}_{filters_version}"
+                return st.selectbox(label, options=options, index=0, key=key)
 
-        def dropdown(label, colname):
-            vals = pd.Series(df[colname].dropna().unique())
-            try:
-                vals = vals.sort_values()
-            except Exception:
-                pass
-            options = ["Todos"] + vals.astype(str).tolist()
-            key = f"sel_{colname}_{filters_version}"
-            return st.selectbox(label, options=options, index=0, key=key)
+            sels = {
+                "BUKRS_TXT": dropdown("Sociedad", "BUKRS_TXT"),
+                "KUNNR_TXT": dropdown("Cliente",  "KUNNR_TXT"),
+                "PRCTR":     dropdown("Cen.Ben",  "PRCTR"),
+                "VKORG_TXT": dropdown("Mercado",  "VKORG_TXT"),
+                "VTWEG_TXT": dropdown("Canal",    "VTWEG_TXT"),
+            }
+            clear = st.button("🧹 Limpiar filtros", use_container_width=True, key=f"{key_prefix}_clear_{filters_version}")
+        return sels, clear
 
-        sel_BUKRS_TXT = dropdown("Sociedad", "BUKRS_TXT")
-        sel_KUNNR_TXT = dropdown("Cliente",  "KUNNR_TXT")
-        sel_PRCTR     = dropdown("Cen.Ben",  "PRCTR")
-        sel_VKORG_TXT = dropdown("Mercado",  "VKORG_TXT")
-        sel_VTWEG_TXT = dropdown("Canal",    "VTWEG_TXT")
+    # Sidebar
+    side_sel, side_clear = render_filters(st.sidebar, "side")
 
-        if st.button("🧹 Limpiar filtros", use_container_width=True):
-            st.session_state["filters_version"] += 1
+    # Fallback arriba para móvil (si no ves sidebar)
+    with st.expander("Filtros (si no ves la pestaña lateral, usá este)"):
+        mob_sel, mob_clear = render_filters(st, "mob")
+
+    def any_selected(sels: dict) -> bool:
+        return any(v != "Todos" for v in sels.values())
+
+    active = mob_sel if any_selected(mob_sel) else side_sel
+
+    if side_clear or mob_clear:
+        st.session_state["filters_version"] += 1
+        try:
+            st.rerun()
+        except Exception:
+            st.experimental_rerun()
+
+    sel_BUKRS_TXT = active["BUKRS_TXT"]
+    sel_KUNNR_TXT = active["KUNNR_TXT"]
+    sel_PRCTR     = active["PRCTR"]
+    sel_VKORG_TXT = active["VKORG_TXT"]
+    sel_VTWEG_TXT = active["VTWEG_TXT"]
 
     # ================== TARJETAS ==================
     df_for_metrics = df if sel_KUNNR_TXT == "Todos" else df[df["KUNNR_TXT"].astype(str) == str(sel_KUNNR_TXT)]
